@@ -11,7 +11,7 @@ import pandas as pd
 from glob import glob
 
 # ==================== KONFIGÜRASYON ====================
-DATABASE_URL = 'postgresql://telegram_user_db_user:ŞİFRE@dpg-xxxxx/telegram_user_db'
+DATABASE_URL = 'postgresql://otomat_database_user:ztcFFMeJq6AzQnndkVIoK2TmUwhI94HO@dpg-d8i3rg6q1p3s73eajeig-a/otomat_database'
 
 RECORDS_DIR = 'user_records'  # Keşif CSV'lerinin olduğu klasör
 WORK_DIR = 'birlestirici_data'  # Master Excel'lerin olduğu klasör
