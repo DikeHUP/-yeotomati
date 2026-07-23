@@ -11,18 +11,14 @@ from telethon.errors import FloodWaitError
 API_ID = 31802611
 API_HASH = '34659f5edc1ce2eb39d3d5c9b126af05'
 
-# Session dosyası adı
 SESSION_NAME = 'userbot_session'
 
-# Script'in bulunduğu klasör (video yolunu buna göre sabitliyoruz)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VIDEO_PATH = os.path.join(BASE_DIR, 'davet.MP4')
-VIDEO_TTL_SECONDS = 3   # video izlendikten sonra kaç saniyede silinsin (tek gösterimlik)
+VIDEO_DELETE_AFTER = 90   # video gönderildikten kaç saniye sonra otomatik silinsin
 
-# KIZ HESABI İÇİN ÖZEL EMOJİ LİSTESİ
 EMOJI_LIST = ['❤','🔥','🥰','💘','💔','💯','💋','🫶','🙈','💅','😘']
 
-# Özel Mesaj Yanıtları
 FIRST_REPLY_TEXT = """
 Merhaba 😏 Hoş geldin canım!
 Kız erkek karışık +18 sohbet grubumuza gelmek ister misin?
@@ -30,27 +26,30 @@ https://t.me/redcorner2 istersen bu linkten istersende arama yerine @redcorner2 
 """
 SUBSEQUENT_REPLY_TEXT = "aşkım istek gönderdiysen en kısa zamanda onaylanacak merak etme💋💋💋"
 
-# ----- ZAMAN AYARLARI -----
 def get_delay():
-    """Gece mi gündüz mü olduğuna göre bekleme süresi döndür"""
     now = datetime.datetime.now().hour
-    if 9 <= now <= 23:  # Gündüz (09:00 - 23:00)
-        return random.uniform(8, 15)  # 8-15 saniye
-    else:  # Gece (23:00 - 09:00)
-        return random.uniform(90, 120)  # 90-120 saniye
+    if 9 <= now <= 23:
+        return random.uniform(8, 15)
+    else:
+        return random.uniform(90, 120)
 
 def should_react():
-    """%25 ihtimalle emoji tepkisi ver (grup için)"""
-    return random.random() < 0.25  # %25 ortalama
+    return random.random() < 0.25
 
-# -------------------
 client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
 
-# Kullanıcı bazlı mesaj sayacı
 user_message_count = {}
 last_reply_time = {}
 last_reaction_time = 0
-min_reaction_interval = 15  # En az 15 saniye ara
+min_reaction_interval = 15
+
+async def delete_video_later(chat_id, msg, wait_seconds):
+    await asyncio.sleep(wait_seconds)
+    try:
+        await client.delete_messages(chat_id, msg)
+        print(f"[Özel] Video otomatik silindi (chat_id={chat_id})")
+    except Exception as e:
+        print(f"[HATA] Video silinemedi: {e}")
 
 @client.on(events.NewMessage(incoming=True))
 async def handler(event):
@@ -60,7 +59,6 @@ async def handler(event):
     if not sender:
         return
 
-    # GÜVENLİ BOT KONTROLÜ
     is_bot = False
     try:
         if hasattr(sender, 'bot') and sender.bot:
@@ -72,82 +70,70 @@ async def handler(event):
         print(f"[Filtre] Bot tespit edildi - İşlem yapılmadı.")
         return
 
-    # ÖZEL MESAJ YANITI (SADECE İLK 2 MESAJA - %100 YANIT)
     if event.is_private:
         user_id = sender.id
-
-        # Kullanıcının kaç mesaj yazdığını bul
         message_count = user_message_count.get(user_id, 0) + 1
         user_message_count[user_id] = message_count
 
         sender_name = getattr(sender, 'first_name', str(user_id))
         print(f"[Özel] {sender_name} - {message_count}. mesaj gönderdi.")
 
-        # SADECE İLK 2 MESAJ İÇİN CEVAP VER (%100)
         if message_count <= 2:
-            # Aynı kişiye spam yapmayı engelle
             now = asyncio.get_event_loop().time()
             last_time = last_reply_time.get(user_id, 0)
 
-            if now - last_time < 25:  # 25 saniye
+            if now - last_time < 25:
                 print(f"[Özel] {sender_name} - Çok hızlı mesaj, atlanıyor.")
                 return
 
-            # Zaman bazlı bekleme
             delay = get_delay()
             await asyncio.sleep(delay)
 
-            # Yazıyor gösterimi
             async with client.action(event.chat_id, 'typing'):
                 await asyncio.sleep(random.uniform(1.5, 3.5))
 
             if message_count == 1:
-                # 1. MESAJ: video (tek gösterimlik / self-destruct) + davet yazısı
+                # ÖNCE: video tek başına (caption yok)
                 print(f"[Debug] Video aranıyor: {VIDEO_PATH} - var mı: {os.path.exists(VIDEO_PATH)}")
                 if os.path.exists(VIDEO_PATH):
                     try:
-                        await client.send_file(
+                        sent_video = await client.send_file(
                             event.chat_id,
                             VIDEO_PATH,
-                            caption=FIRST_REPLY_TEXT,
-                            ttl_seconds=VIDEO_TTL_SECONDS,
                             force_document=False,
                         )
-                        print(f"[Özel] {sender_name} - 1. MESAJ (video, self-destruct) gönderildi ✅ ({delay:.1f}s)")
+                        print(f"[Özel] {sender_name} - 1. MESAJ video gönderildi ✅ ({delay:.1f}s)")
+                        asyncio.create_task(delete_video_later(event.chat_id, sent_video, VIDEO_DELETE_AFTER))
                     except Exception as e:
-                        print(f"[HATA] Video gönderilemedi, metne düşülüyor: {e}")
-                        await event.reply(FIRST_REPLY_TEXT)
+                        print(f"[HATA] Video gönderilemedi: {e}")
                 else:
-                    print(f"[UYARI] Video bulunamadı: {VIDEO_PATH} - sadece metin gönderiliyor.")
-                    await event.reply(FIRST_REPLY_TEXT)
+                    print(f"[UYARI] Video bulunamadı: {VIDEO_PATH}")
+
+                # SONRA: yazı ayrı mesaj olarak, kalıcı
+                await event.reply(FIRST_REPLY_TEXT)
+                print(f"[Özel] {sender_name} - 1. MESAJ yazısı gönderildi ✅ (kalıcı)")
             elif message_count == 2:
-                # 2. MESAJ: ikinci mesaj
                 await event.reply(SUBSEQUENT_REPLY_TEXT)
                 print(f"[Özel] {sender_name} - 2. MESAJ yanıtı gönderildi ✅ ({delay:.1f}s)")
 
             last_reply_time[user_id] = now
         else:
-            # 3. ve sonraki mesajlara HİÇBİR ŞEY YAPMA
             print(f"[Özel] {sender_name} - {message_count}. mesaj (CEVAP VERİLMEDİ, sessiz mod) ❌")
             return
 
-    # GRUP MESAJLARINA RASTGELE EMOJİ TEPKİSİ (SADECE %25)
     elif event.is_group and not event.out:
         chat_title = getattr(event.chat, 'title', None) or 'Bilinmeyen grup'
 
-        # Tepki verme oranı kontrolü (%25)
         if not should_react():
             print(f"[Grup] {chat_title} - Tepki verilmedi (oran atlandı).")
             return
 
-        # Rate limit kontrolü
         now = asyncio.get_event_loop().time()
         if now - last_reaction_time < min_reaction_interval:
             remaining = min_reaction_interval - (now - last_reaction_time)
             print(f"[Grup] Rate limit - {remaining:.1f} saniye bekleniyor...")
             await asyncio.sleep(remaining)
 
-        # Zaman bazlı bekleme
         delay = get_delay()
         await asyncio.sleep(delay)
 
@@ -208,7 +194,7 @@ async def main():
     print("   🔸 Rate limit aralığı: 15 saniye")
     print("-" * 55)
     print("💬 ÖZEL MESAJ:")
-    print("   🔹 1. mesaj → VİDEO (tek gösterimlik, self-destruct) + davet yazısı")
+    print("   🔹 1. mesaj → VİDEO (ayrı mesaj, X sn sonra silinir) + YAZI (ayrı mesaj, kalıcı)")
     print("   🔹 2. mesaj → BEKLE mesajı (%100)")
     print("   🔹 3+ mesaj → SESSİZ (hiçbir şey yapma)")
     print("-" * 55)
