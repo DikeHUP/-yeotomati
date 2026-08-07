@@ -22,10 +22,10 @@ EMOJI_LIST = ['❤','🔥','🥰','💘','💔','💯','💋','🫶','🙈','�
 FIRST_REPLY_TEXT = """
 Merhaba 😏 Hoş geldin canım!
 Kız erkek karışık +18 sohbet grubumuza gelmek ister misin?
-https://t.me/redcornerduyuru istersen bu linkten istersende arama yerine @redcorner2 yazarak aramıza katılabilirsin..
+Kanaldan takip edebilirsin duyuruları
+https://t.me/redcornerduyuru istersen bu linkten istersende arama yerine @redcornerduyuru yazarak aramıza katılabilirsin..
 """
-SUBSEQUENT_REPLY_TEXT = "aşkım istek gönderdiysen en kısa zamanda onaylanacak merak etme💋💋💋"
-
+SUBSEQUENT_REPLY_TEXT = "Bizi kontrol etmeyi unutma💋💋💋"
 def get_delay():
     now = datetime.datetime.now().hour
     if 9 <= now <= 23:
