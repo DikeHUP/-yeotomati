@@ -22,7 +22,7 @@ EMOJI_LIST = ['❤','🔥','🥰','💘','💔','💯','💋','🫶','🙈','�
 FIRST_REPLY_TEXT = """
 Merhaba 😏 Hoş geldin canım!
 Kız erkek karışık +18 sohbet grubumuza gelmek ister misin?
-https://t.me/redcorner2 istersen bu linkten istersende arama yerine @redcorner2 yazarak aramıza katılabilirsin..
+https://t.me/redcornerduyuru istersen bu linkten istersende arama yerine @redcorner2 yazarak aramıza katılabilirsin..
 """
 SUBSEQUENT_REPLY_TEXT = "aşkım istek gönderdiysen en kısa zamanda onaylanacak merak etme💋💋💋"
 
